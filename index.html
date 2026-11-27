@@ -102,6 +102,20 @@ async function loadOrders(){if(!db||!(await requireAdmin()))return;const {data,e
 const rows=data||[];
 window.allOrders=rows;$("statOrders").textContent=rows.length;$("statPending").textContent=rows.filter(x=>x.status==="pending").length;
 $("ordersTable").innerHTML=rows.length?`<table><thead><tr><th>Date</th><th>Customer / Contact</th><th>Order</th><th>Payment / Address</th><th>Status</th><th>Update</th></tr></thead><tbody>${rows.map(o=>`<tr><td>${new Date(o.created_at).toLocaleString()}</td><td><b>${esc(o.customer_name)}</b><br>${esc(o.phone)}<br>${esc(o.email||"")}</td><td>${esc(o.product_name)}<br>${o.quantity} × ${money(o.unit_price)}<br><b>${money(o.quantity*o.unit_price)}</b></td><td>${esc(o.payment_method)}<br>${esc(o.delivery_address)}<br>${esc(o.notes||"")}</td><td><span class="status ${esc(o.status)}">${esc(o.status)}</span></td><td><select onchange="updateStatus('${o.id}',this.value)">${["pending","confirmed","completed","cancelled"].map(s=>`<option ${o.status===s?"selected":""}>${s}</option>`).join("")}</select></td></tr>`).join("")}</tbody></table>`:'<div class="pad">No customer inquiries yet.</div>'}
+window.renderOrders=()=>{
+  const search=(document.getElementById("orderSearch")?.value||"").toLowerCase().trim();
+  const filter=document.getElementById("orderFilter")?.value||"all";
+
+  document.querySelectorAll("#ordersTable tbody tr").forEach(row=>{
+    const text=row.textContent.toLowerCase();
+    const status=row.querySelector(".status")?.textContent.trim().toLowerCase()||"";
+
+    const matchesSearch=!search||text.includes(search);
+    const matchesStatus=filter==="all"||status===filter;
+
+    row.style.display=matchesSearch&&matchesStatus?"":"none";
+  });
+};
 window.updateStatus=async(id,status)=>{if(!(await requireAdmin()))return;const {error}=await db.from("orders").update({status}).eq("id",id);if(error)alert(error.message);else loadOrders()};
 async function loadAdminProducts(){if(!(await requireAdmin()))return;const {data,error}=await db.from("products").select("*").order("created_at",{ascending:false});if(error){$("adminProducts").textContent=error.message;return}const rows=data||[];$("statProducts").textContent=rows.length;$("adminProducts").innerHTML=rows.length?`<table><thead><tr><th>Product</th><th>Price</th><th>Visible</th><th>Actions</th></tr></thead><tbody>${rows.map(p=>`<tr><td>${esc(p.name)}<br><span class="tiny">${esc(p.description||"")}</span></td><td>${money(p.price)}</td><td>${p.active?"Yes":"No"}</td><td><button class="btn small secondary" onclick="editProduct('${p.id}')">Edit</button> <button class="btn small dark" onclick="deleteProduct('${p.id}')">Delete</button></td></tr>`).join("")}</tbody></table>`:'<div class="pad">No products yet.</div>';window._adminProducts=rows}
 window.editProduct=id=>{const p=(window._adminProducts||[]).find(x=>x.id===id);if(!p)return;$("pId").value=p.id;$("pName").value=p.name;$("pPrice").value=p.price;$("pDesc").value=p.description||"";$("pImage").value=p.image_url||"";$("pActive").checked=p.active;$("productFormTitle").textContent="Edit Product";$("productsTab").scrollIntoView({behavior:"smooth"})};
